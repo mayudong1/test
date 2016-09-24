@@ -31,37 +31,9 @@ int my_recv(int sockfd, char* buf, int len)
 	return len;
 }
 
-int main(int argc,char *argv[])  
-{  
-	char* server_name = "live.hkstv.hk.lxdns.com";
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in server;
-    server.sin_family = AF_INET;
-    server.sin_addr.s_addr = inet_addr(server_name);
-    if(server.sin_addr.s_addr == INADDR_NONE)
-    {
-    	struct hostent *host = gethostbyname(server_name);
-    	if(host == NULL || host->h_addr == NULL)
-    	{
-    		printf("gethostbyname failed\n");
-    		return -1;
-    	}
-    	server.sin_addr = *(struct in_addr*)host->h_addr;
-    }
-    server.sin_port = htons(1935);
-
-    int ret = connect(sockfd, (struct sockaddr*)&server, sizeof(server));
-    if(ret == -1)
-    {
-    	printf("connect failed\n");
-    	return -1;
-    }
-    else
-    {
-    	printf("connect success.\n");
-    }
-
-    char clientbuf[HANDSHAKE_LEN + 1];    
+int handshake(int sockfd)
+{
+ 	char clientbuf[HANDSHAKE_LEN + 1];    
 
     clientbuf[0] = 3;
     clientbuf[1] = 0;
@@ -121,9 +93,52 @@ int main(int argc,char *argv[])
     }
     else
     {
-    	printf("recv s2 success. handshade success.\n");    	
+    	printf("recv s2 success.\n");    	
+    }
+    return 0;
+}
+
+int main(int argc,char *argv[])  
+{  
+	char* server_name = "live.hkstv.hk.lxdns.com";
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in server;
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = inet_addr(server_name);
+    if(server.sin_addr.s_addr == INADDR_NONE)
+    {
+    	struct hostent *host = gethostbyname(server_name);
+    	if(host == NULL || host->h_addr == NULL)
+    	{
+    		printf("gethostbyname failed\n");
+    		return -1;
+    	}
+    	server.sin_addr = *(struct in_addr*)host->h_addr;
+    }
+    server.sin_port = htons(1935);
+
+    int ret = connect(sockfd, (struct sockaddr*)&server, sizeof(server));
+    if(ret == -1)
+    {
+    	printf("connect failed\n");
+    	return -1;
+    }
+    else
+    {
+    	printf("connect success.\n");
     }
 
+    ret = handshake(sockfd);
+    if(ret != 0)
+    {
+    	printf("handshake failed\n");
+    	return -1;
+    }
+    else
+    {
+    	printf("handshake success.\n");
+    }
+   
     close(sockfd);
 
     return 0;
