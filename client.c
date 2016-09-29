@@ -6,6 +6,11 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <string.h>
+
+#include "define.h"
+#include "amf.h"
+#include "helper.h"
 
 #define HANDSHAKE_LEN 1536
 
@@ -98,8 +103,48 @@ int handshake(int sockfd)
     return 0;
 }
 
+
+int send_message(int sockfd, RTMP_Message* msg)
+{
+    char buffer[4096] = {0};
+    char* enc = buffer;
+
+    enc = encode_string(enc, "connect");
+    enc = encode_number(enc, 1);
+
+    *enc++ = AMF_OBJECT;
+    enc = encode_named_string(enc, "app", "mydApp");
+    enc = encode_named_string(enc, "flashver", "FMSc/1.0");
+    enc = encode_named_string(enc, "swfUrl", "FlvPlayer.swf");
+    enc = encode_named_string(enc, "tcUrl", "rtmp://localhost:1935/mudApp/live");
+    enc = encode_named_bool(enc, "fpad", 0);
+    enc = encode_named_number(enc, "audioCodecs", 0x0400); //aac
+    enc = encode_named_number(enc, "videoCodecs", 0x0080); //h264
+    enc = encode_named_number(enc, "videoFunction", 1.0);
+    enc = encode_named_string(enc, "pageUrl", "page/url");
+    enc = encode_named_number(enc, "objectEncodeing", 3);//amf3
+
+    print_hex(buffer, enc-buffer);
+    return 0;
+}
+
+
+void test()
+{
+    printf("this is in test\n");
+    
+    send_message(0, NULL);
+}
+
+
 int main(int argc,char *argv[])  
 {  
+    if(argc > 1)
+    {
+        test();
+        return 0;
+    }
+
 	char* server_name = "live.hkstv.hk.lxdns.com";
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in server;
