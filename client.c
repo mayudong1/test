@@ -14,6 +14,8 @@
 
 #define HANDSHAKE_LEN 1536
 
+static int chunck_size = 128;
+
 
 int my_recv(int sockfd, char* buf, int len)
 {
@@ -103,9 +105,58 @@ int handshake(int sockfd)
     return 0;
 }
 
-
 int send_message(int sockfd, RTMP_Message* msg)
 {
+    // print_hex(msg->body, msg->payload_len);
+
+    char header[256];
+    memset(header, 0, 256);
+    char* basic_header = header;    
+    char* msg_header = &header[1];
+    int header_len = 0;
+
+    int chunck_count = (msg->payload_len / chunck_size) + ((msg->payload_len % chunck_size) == 0 ? 0 : 1);
+    int remain = msg->payload_len;
+    for(int i=0;i<chunck_count;i++)
+    {
+        if(i == 0)
+        {
+            *basic_header = 0x00;
+            *basic_header |= msg->channel;
+
+            msg_header += 3;//timestamp
+            msg_header += encode_int24_be(msg_header, msg->payload_len);
+            *msg_header++ = msg->type;
+            msg_header += encode_int32_le(msg_header, msg->streamid);            
+            header_len = msg_header - header;
+        }
+        else
+        {
+            *basic_header = 0xc0;
+            *basic_header |= msg->channel;
+            header_len = 1;
+        }
+                
+        send(sockfd, header, header_len, 0);
+        // print_hex(header, header_len);
+        
+        send(sockfd, msg->body + (i * chunck_size), MIN(remain, chunck_size), 0);
+        // print_hex(msg->body + (i * chunck_size), MIN(remain, chunck_size));
+
+        remain -= chunck_size;
+    }
+
+    return 0;
+}
+
+int send_connect_msg(int sockfd, RTMP_Message* _msg)
+{
+    if(_msg)
+    {
+        return send_message(sockfd, _msg);        
+    }
+
+    RTMP_Message msg;
     char buffer[4096] = {0};
     char* enc = buffer;
 
@@ -113,27 +164,36 @@ int send_message(int sockfd, RTMP_Message* msg)
     enc = encode_number(enc, 1);
 
     *enc++ = AMF_OBJECT;
-    enc = encode_named_string(enc, "app", "mydApp");
-    enc = encode_named_string(enc, "flashver", "FMSc/1.0");
-    enc = encode_named_string(enc, "swfUrl", "FlvPlayer.swf");
-    enc = encode_named_string(enc, "tcUrl", "rtmp://localhost:1935/mudApp/live");
+    enc = encode_named_string(enc, "app", "myApp");
+    enc = encode_named_string(enc, "flashVer", "testVer");
+    // enc = encode_named_string(enc, "swfUrl", "FlvPlayer.swf");
+    enc = encode_named_string(enc, "tcUrl", "rtmp://live.hkstv.hk.lxdns.com:1935/live");
     enc = encode_named_bool(enc, "fpad", 0);
-    enc = encode_named_number(enc, "audioCodecs", 0x0400); //aac
-    enc = encode_named_number(enc, "videoCodecs", 0x0080); //h264
+    enc = encode_named_number(enc, "capabilities", 15);
+    enc = encode_named_number(enc, "audioCodecs", 4071); //aac
+    enc = encode_named_number(enc, "videoCodecs", 252); //h264
     enc = encode_named_number(enc, "videoFunction", 1.0);
     enc = encode_named_string(enc, "pageUrl", "page/url");
     enc = encode_named_number(enc, "objectEncodeing", 3);//amf3
 
-    print_hex(buffer, enc-buffer);
+    *enc++ = 0;
+    *enc++ = 0;
+    *enc++ = AMF_OBJECT_END;
+    
+    msg.type = 20;
+    msg.payload_len = enc - buffer;
+    msg.timestamp = 0;
+    msg.streamid = 0;
+    msg.channel = 3;
+    msg.body = buffer;
+
+    send_message(sockfd, &msg);
     return 0;
 }
-
 
 void test()
 {
     printf("this is in test\n");
-    
-    send_message(0, NULL);
 }
 
 
@@ -184,6 +244,19 @@ int main(int argc,char *argv[])
     	printf("handshake success.\n");
     }
    
+    send_connect_msg(sockfd, NULL);
+    char aaa[1024];
+    ret = recv(sockfd, aaa, 1024, 0);
+    if(ret > 0)
+    {
+        printf("---------\n");
+        print_hex(aaa, ret);    
+    }
+    else
+    {
+        printf("recv failed， ret = %d\n", ret);
+    }
+
     close(sockfd);
 
     return 0;

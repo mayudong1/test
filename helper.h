@@ -18,11 +18,19 @@ void print_hex(char* buffer, int len)
 	{
 		for(int j=0;j<count_per_line;j++)
 		{
+			if(i*count_per_line+j >= len)
+			{
+				break;
+			}
 			printf("%02X ", (unsigned char)buffer[i*count_per_line+j]);
 		}
 		printf("\t");
 		for(int j=0;j<count_per_line;j++)
 		{
+			if(i*count_per_line+j >= len)
+			{
+				break;
+			}
 			printf("%c", get_printable_char(buffer[i*count_per_line+j]));
 		}
 		printf("\n");
