@@ -6,7 +6,8 @@
 
 typedef struct IOContext{
 	FILE* fd;
-	uint8_t buffer[1024];
+	uint8_t* buffer;
+	int buffer_size;
 	int size;
 	int cur_index;
 }IOContext;

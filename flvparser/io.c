@@ -15,16 +15,27 @@ IOContext* open_input(const char* input){
 void close_input(IOContext* ctx){
 	if(ctx == NULL)
 		return;
-	if(ctx->fd == NULL){
-		memset(ctx, 0, sizeof(IOContext));
-		free(ctx);
-		return;
+	if(ctx->fd != NULL){
+		fclose(ctx->fd);
 	}
-	fclose(ctx->fd);
+	if(ctx->buffer != NULL){
+		free(ctx->buffer);
+	}
 	free(ctx);
 }
 
 int read(IOContext* ctx, int size){
+	if(size <= 0)
+		return -1;
+
+	if(ctx->buffer == NULL){
+		ctx->buffer = (uint8_t*)malloc(size * sizeof(uint8_t));
+		ctx->buffer_size = size;
+	} else if(size > ctx->buffer_size){
+		ctx->buffer = realloc(ctx->buffer, size);
+		ctx->buffer_size = size;
+	}
+
 	int ret = fread(ctx->buffer, 1, size, ctx->fd);
 	if(ret < 0)
 		return ret;
