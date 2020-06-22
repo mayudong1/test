@@ -13,16 +13,53 @@ uint32_t get_flv_timestamp(IOContext* ctx){
 	return extra_time << 24 | base_time;
 }
 
-int prase_tag_header(IOContext* ctx, TAG_HEADER* header)
+int prase_tag_header(IOContext* ctx, FLV_Tag* tag)
 {
 	int ret = read(ctx, 11);
 	if(ret < 11)
 		return -1;
 
-	header->type = get_uint8(ctx);
-	header->data_size = get_uint24(ctx);
-	header->timestamp = get_flv_timestamp(ctx);
-	header->stream_id = get_uint24(ctx);
+	tag->type = get_uint8(ctx);
+	tag->data_size = get_uint24(ctx);
+	tag->timestamp = get_flv_timestamp(ctx);
+	tag->stream_id = get_uint24(ctx);
+	return 0;
+}
+
+int parse_metadata(IOContext* ctx)
+{
+	return 0;
+}
+
+int parse_video(IOContext* ctx)
+{
+	return 0;
+}
+
+int parse_audio(IOContext* ctx)
+{
+	return 0;
+}
+
+int parse_tag_body(IOContext* ctx, FLV_Tag* tag)
+{
+	int ret = read(ctx, tag->data_size);
+	if(ret < tag->data_size)
+		return -1;
+
+	switch(tag->type){
+	case TAG_TYPE_METADATA:
+		parse_metadata(ctx);
+		break;
+	case TAG_TYPE_VIDEO:
+		parse_video(ctx);
+		break;
+	case TAG_TYPE_AUDIO:
+		parse_audio(ctx);
+		break;
+	default:
+		break;
+	}
 	return 0;
 }
 
@@ -39,12 +76,12 @@ int parse_flv(IOContext* ctx){
 	}
 
 	while(1){
-		TAG_HEADER tag_header;
-		ret = prase_tag_header(ctx, &tag_header);
+		FLV_Tag tag;
+		ret = prase_tag_header(ctx, &tag);
 		if(ret != 0)
 			break;
-		printf("tag type = %d, size = %d\n", tag_header.type, tag_header.data_size);
-		read_skip(ctx, tag_header.data_size);
+		printf("tag type = %d, size = %d\n", tag.type, tag.data_size);
+		parse_tag_body(ctx, &tag);
 		read_skip(ctx, 4);
 	}
 
