@@ -5,6 +5,7 @@
 #include "io.h"
 #include "flv.h"
 
+void show_tag_info(FLV_Tag* tag);
 
 
 uint32_t get_flv_timestamp(IOContext* ctx){
@@ -26,17 +27,21 @@ int prase_tag_header(IOContext* ctx, FLV_Tag* tag)
 	return 0;
 }
 
-int parse_metadata(IOContext* ctx)
+int parse_metadata(IOContext* ctx, FLV_Tag* tag)
+{
+	tag->video.frame_type = get_uint8(ctx);
+	tag->video.codec_id = get_uint8(ctx);
+	tag->video.avcpacket_type = get_uint8(ctx);
+	tag->video.cts = get_uint24(ctx);
+	return 0;
+}
+
+int parse_video(IOContext* ctx, FLV_Tag* tag)
 {
 	return 0;
 }
 
-int parse_video(IOContext* ctx)
-{
-	return 0;
-}
-
-int parse_audio(IOContext* ctx)
+int parse_audio(IOContext* ctx, FLV_Tag* tag)
 {
 	return 0;
 }
@@ -49,13 +54,13 @@ int parse_tag_body(IOContext* ctx, FLV_Tag* tag)
 
 	switch(tag->type){
 	case TAG_TYPE_METADATA:
-		parse_metadata(ctx);
+		parse_metadata(ctx, tag);
 		break;
 	case TAG_TYPE_VIDEO:
-		parse_video(ctx);
+		parse_video(ctx, tag);
 		break;
 	case TAG_TYPE_AUDIO:
-		parse_audio(ctx);
+		parse_audio(ctx, tag);
 		break;
 	default:
 		break;
@@ -80,7 +85,7 @@ int parse_flv(IOContext* ctx){
 		ret = prase_tag_header(ctx, &tag);
 		if(ret != 0)
 			break;
-		printf("tag type = %d, size = %d\n", tag.type, tag.data_size);
+		show_tag_info(&tag);
 		parse_tag_body(ctx, &tag);
 		read_skip(ctx, 4);
 	}
@@ -89,6 +94,14 @@ int parse_flv(IOContext* ctx){
 	return 0;
 }
 
+void show_tag_info(FLV_Tag* tag)
+{
+	printf("type = %d, size = %d ", tag->type, tag->data_size);
+	if(tag->type == TAG_TYPE_VIDEO){
+		printf("frame_type = %d", tag->video.frame_type);
+	}
+	printf("\n");
+}
 
 int main(int argc, char** argv)
 {
