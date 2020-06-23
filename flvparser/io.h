@@ -20,7 +20,10 @@ void read_skip(IOContext* ctx, int skip);
 
 uint8_t get_uint8(IOContext* ctx);
 uint32_t get_uint24(IOContext* ctx);
+uint32_t get_uint32(IOContext* ctx);
+void get_skip(IOContext* ctx, int skip);
 
+int get_data(IOContext* ctx, uint8_t* data, int size);
 
 
 #endif

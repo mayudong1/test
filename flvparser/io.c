@@ -62,3 +62,25 @@ uint32_t get_uint24(IOContext* ctx){
 	ctx->cur_index += 3;
 	return ret;
 }
+
+uint32_t get_uint32(IOContext* ctx){
+	uint32_t ret = ctx->buffer[ctx->cur_index] << 24 | ctx->buffer[ctx->cur_index+1] << 16 | ctx->buffer[ctx->cur_index+2] << 8 | ctx->buffer[ctx->cur_index+3];
+	ctx->cur_index += 4;
+	return ret;
+}
+
+void get_skip(IOContext* ctx, int skip){
+	ctx->cur_index += skip;
+}
+
+int get_data(IOContext* ctx, uint8_t* data, int size){
+	int left_size = ctx->size - ctx->cur_index;
+	if(size > left_size){
+		size = left_size;
+		if(size <= 0)
+			return 0;
+	}
+	memcpy(data, &ctx->buffer[ctx->cur_index], size);
+	ctx->cur_index += size;
+	return size;
+}
