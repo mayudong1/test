@@ -164,6 +164,23 @@ int parse_video(IOContext* ctx, FLV_Tag* tag)
 
 int parse_audio(IOContext* ctx, FLV_Tag* tag)
 {
+	uint8_t tmp = get_uint8(ctx);
+	tag->audio.format = tmp >> 4;
+	tag->audio.sample_rate = (tmp >> 2) & 0x03;
+	tag->audio.bit_width = (tmp >> 1) & 0x01;
+	tag->audio.stereo = tmp & 0x01;
+	tag->audio.aac_packet_type = -1;
+	if(tag->audio.format == 10){
+		tag->audio.aac_packet_type = get_uint8(ctx);
+	}
+
+	if(tag->audio.aac_packet_type == 0){
+		tag->audio.seq_header_len = tag->data_size - 2;
+		if(tag->audio.seq_header_len > MAX_SEQ_HEADER_LEN){
+			tag->audio.seq_header_len = MAX_SEQ_HEADER_LEN;
+		}
+		get_data(ctx, tag->audio.seq_header, tag->audio.seq_header_len);
+	}
 	return 0;
 }
 
@@ -238,6 +255,13 @@ void show_tag_info(FLV_Tag* tag)
 	} else if(tag->type == TAG_TYPE_METADATA){
 		for(int i=0;i<tag->metadata.amf1_num;i++){
 			printf("%s ", tag->metadata.meta_array[i].key);
+		}
+	} else if(tag->type == TAG_TYPE_AUDIO){
+		if(tag->audio.seq_header_len > 0){
+			printf("audio adts : ");
+			for(int i=0;i<tag->audio.seq_header_len;i++){
+				printf("%02x ", tag->audio.seq_header[i]);
+			}
 		}
 	}
 	printf("\n");

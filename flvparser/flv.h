@@ -46,12 +46,23 @@ typedef struct TAG_VIDEO{
 	int codec_id;
 	int avcpacket_type;
 	int cts;
-	unsigned char seq_header[MAX_SEQ_HEADER_LEN];
+	uint8_t seq_header[MAX_SEQ_HEADER_LEN];
 	int seq_header_len;
 
 	int nalu_num;
 	int nalu_list[MAX_NALU_NUM];
 }TAG_VIDEO;
+
+typedef struct TAG_AUDIO{
+	int format;
+	int sample_rate;
+	int bit_width;
+	int stereo;
+	int aac_packet_type;
+
+	uint8_t seq_header[MAX_SEQ_HEADER_LEN];
+	int seq_header_len;
+}TAG_AUDIO;
 
 
 typedef struct FLV_TAG{
@@ -63,6 +74,7 @@ typedef struct FLV_TAG{
 	union{
 		TAG_METADATA metadata;
 		TAG_VIDEO video;
+		TAG_AUDIO audio;
 	};
 }FLV_Tag;
 
