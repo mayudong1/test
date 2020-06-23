@@ -5,6 +5,7 @@
 
 #include "io.h"
 #include "flv.h"
+#include "amf.h"
 
 void show_tag_info(FLV_Tag* tag);
 
@@ -32,9 +33,83 @@ int prase_tag_header(IOContext* ctx, FLV_Tag* tag)
 	return 0;
 }
 
+void get_amf_string(IOContext*ctx, char* str)
+{
+	int len = get_uint16(ctx);
+	if(len > MAX_AMF_STR_LEN - 1){
+		len = MAX_AMF_STR_LEN - 1;
+	}
+	int ret = get_data(ctx, (uint8_t*)str, len);
+	str[ret] = 0;
+}
+
+double get_amf_number(IOContext* ctx){
+	double dVal;
+	uint8_t data[8];
+	get_data(ctx, data, 8);
+    unsigned char *ci, *co;
+    ci = (unsigned char *)data;
+    co = (unsigned char *)&dVal;
+    co[0] = ci[7];
+    co[1] = ci[6];
+    co[2] = ci[5];
+    co[3] = ci[4];
+    co[4] = ci[3];
+    co[5] = ci[2];
+    co[6] = ci[1];
+    co[7] = ci[0];
+    return dVal;
+}
+
+bool get_amf_bool(IOContext* ctx){
+	uint8_t data = get_uint8(ctx);
+	return data != 0;
+}
+
+
 int parse_metadata(IOContext* ctx, FLV_Tag* tag)
 {
-	
+	tag->metadata.amf0_type = get_uint8(ctx);
+	get_amf_string(ctx, tag->metadata.amf0_data);
+	tag->metadata.amf1_type = get_uint8(ctx);
+	if(tag->metadata.amf1_type == AMF_ECMA_ARRAY){
+		int count = get_uint32(ctx);
+		if(count > MAX_METADATA_COUNT)
+			count = MAX_METADATA_COUNT;
+		tag->metadata.amf1_num = count;
+		for(int i=0;i<count;i++){
+			METADATA_INFO* meta = &tag->metadata.meta_array[i];
+			get_amf_string(ctx, meta->key);
+			meta->valueType = get_uint8(ctx);
+			if(meta->valueType == AMF_NUMBER){
+				meta->dValue = get_amf_number(ctx);
+			} else if(meta->valueType == AMF_STRING){
+				get_amf_string(ctx, meta->strValue);
+			} else if(meta->valueType == AMF_BOOLEAN){
+				meta->bValue = get_amf_bool(ctx);
+			}
+		}
+	} else if(tag->metadata.amf1_type == AMF_OBJECT){
+		int count = 0;
+		while(1){
+			METADATA_INFO* meta = &tag->metadata.meta_array[count];
+			get_amf_string(ctx, meta->key);
+			meta->valueType = get_uint8(ctx);
+			if(meta->valueType == AMF_NUMBER){
+				meta->dValue = get_amf_number(ctx);
+			} else if(meta->valueType == AMF_STRING){
+				get_amf_string(ctx, meta->strValue);
+			} else if(meta->valueType == AMF_BOOLEAN){
+				meta->bValue = get_amf_bool(ctx);
+			} else if(meta->valueType == AMF_OBJECT_END){
+				break;
+			}
+			count++;
+			if(count >= MAX_METADATA_COUNT)
+				break;
+		}
+		tag->metadata.amf1_num = count;
+	}
 	return 0;
 }
 
@@ -159,6 +234,10 @@ void show_tag_info(FLV_Tag* tag)
 			for(int i=0;i<tag->video.nalu_num;i++){
 				printf("%02x ", tag->video.nalu_list[i]);
 			}
+		}
+	} else if(tag->type == TAG_TYPE_METADATA){
+		for(int i=0;i<tag->metadata.amf1_num;i++){
+			printf("%s ", tag->metadata.meta_array[i].key);
 		}
 	}
 	printf("\n");

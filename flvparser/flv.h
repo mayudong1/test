@@ -5,13 +5,13 @@
 #define MAX_SEQ_HEADER_LEN 1024
 #define MAX_NALU_NUM 10
 
-#define MAX_AMF0_LEN 64
 #define MAX_AMF_STR_LEN 128
 #define MAX_METADATA_COUNT 64
 
 #define TAG_TYPE_METADATA 0x12
 #define TAG_TYPE_VIDEO 0x09
 #define TAG_TYPE_AUDIO 0x08
+
 
 enum VIDEO_CODEC{
 	CODEC_H264 = 7,
@@ -35,10 +35,10 @@ typedef struct METADATA_INFO
 
 typedef struct TAG_METADATA{
 	int amf0_type;
-	char amf0_data[MAX_AMF0_LEN];
+	char amf0_data[MAX_AMF_STR_LEN];
 	int amf1_type;
 	int amf1_num;
-	METADATA_INFO metadata[MAX_METADATA_COUNT];
+	METADATA_INFO meta_array[MAX_METADATA_COUNT];
 }TAG_METADATA;
 
 typedef struct TAG_VIDEO{
@@ -61,6 +61,7 @@ typedef struct FLV_TAG{
 	int stream_id;
 
 	union{
+		TAG_METADATA metadata;
 		TAG_VIDEO video;
 	};
 }FLV_Tag;

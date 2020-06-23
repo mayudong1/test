@@ -19,6 +19,7 @@ int read(IOContext* ctx, int size);
 void read_skip(IOContext* ctx, int skip);
 
 uint8_t get_uint8(IOContext* ctx);
+uint16_t get_uint16(IOContext* ctx);
 uint32_t get_uint24(IOContext* ctx);
 uint32_t get_uint32(IOContext* ctx);
 void get_skip(IOContext* ctx, int skip);

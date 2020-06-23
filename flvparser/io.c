@@ -57,6 +57,12 @@ uint8_t get_uint8(IOContext* ctx){
 	return ret;
 }
 
+uint16_t get_uint16(IOContext* ctx){
+	uint16_t ret = ctx->buffer[ctx->cur_index] << 8 | ctx->buffer[ctx->cur_index+1];
+	ctx->cur_index += 2;
+	return ret;
+}
+
 uint32_t get_uint24(IOContext* ctx){
 	uint32_t ret = ctx->buffer[ctx->cur_index] << 16 | ctx->buffer[ctx->cur_index+1] << 8 | ctx->buffer[ctx->cur_index+2];
 	ctx->cur_index += 3;
