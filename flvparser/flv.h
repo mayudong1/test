@@ -1,6 +1,7 @@
 #ifndef _FLV_DEFINE_H_
 #define _FLV_DEFINE_H_
 #include <stdbool.h>
+#include "io.h"
 
 #define MAX_SEQ_HEADER_LEN 1024
 #define MAX_NALU_NUM 10
@@ -79,5 +80,6 @@ typedef struct FLV_TAG{
 }FLV_Tag;
 
 
+int parse_flv(IOContext* ctx);
 
 #endif
