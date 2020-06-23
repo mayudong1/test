@@ -8,33 +8,20 @@
 #include "amf.h"
 
 
-void show_tag_info(FLV_Tag* tag);
+static void show_tag_info(FLV_Tag* tag);
 
-void flv_tag_init(FLV_Tag* tag){
+static void flv_tag_init(FLV_Tag* tag){
 	memset(tag, 0, sizeof(FLV_Tag));
 }
 
 
-uint32_t get_flv_timestamp(IOContext* ctx){
+static uint32_t get_flv_timestamp(IOContext* ctx){
 	uint32_t base_time = get_uint24(ctx);
 	uint8_t extra_time = get_uint8(ctx);
 	return extra_time << 24 | base_time;
 }
 
-int prase_tag_header(IOContext* ctx, FLV_Tag* tag)
-{
-	int ret = read(ctx, 11);
-	if(ret < 11)
-		return -1;
-
-	tag->type = get_uint8(ctx);
-	tag->data_size = get_uint24(ctx);
-	tag->timestamp = get_flv_timestamp(ctx);
-	tag->stream_id = get_uint24(ctx);
-	return 0;
-}
-
-void get_amf_string(IOContext*ctx, char* str)
+static void get_amf_string(IOContext*ctx, char* str)
 {
 	int len = get_uint16(ctx);
 	if(len > MAX_AMF_STR_LEN - 1){
@@ -44,7 +31,7 @@ void get_amf_string(IOContext*ctx, char* str)
 	str[ret] = 0;
 }
 
-double get_amf_number(IOContext* ctx){
+static double get_amf_number(IOContext* ctx){
 	double dVal;
 	uint8_t data[8];
 	get_data(ctx, data, 8);
@@ -62,13 +49,25 @@ double get_amf_number(IOContext* ctx){
     return dVal;
 }
 
-bool get_amf_bool(IOContext* ctx){
+static bool get_amf_bool(IOContext* ctx){
 	uint8_t data = get_uint8(ctx);
 	return data != 0;
 }
 
+static int prase_tag_header(IOContext* ctx, FLV_Tag* tag)
+{
+	int ret = read(ctx, 11);
+	if(ret < 11)
+		return -1;
 
-int parse_metadata(IOContext* ctx, FLV_Tag* tag)
+	tag->type = get_uint8(ctx);
+	tag->data_size = get_uint24(ctx);
+	tag->timestamp = get_flv_timestamp(ctx);
+	tag->stream_id = get_uint24(ctx);
+	return 0;
+}
+
+static int parse_metadata(IOContext* ctx, FLV_Tag* tag)
 {
 	tag->metadata.amf0_type = get_uint8(ctx);
 	get_amf_string(ctx, tag->metadata.amf0_data);
@@ -114,7 +113,7 @@ int parse_metadata(IOContext* ctx, FLV_Tag* tag)
 	return 0;
 }
 
-int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
+static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 {
 	int left_size = tag->data_size - 5;
 	while(left_size > 0){
@@ -138,7 +137,7 @@ int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 	return 0;
 }
 
-int parse_video(IOContext* ctx, FLV_Tag* tag)
+static int parse_video(IOContext* ctx, FLV_Tag* tag)
 {
 	uint8_t tmp = get_uint8(ctx);
 	tag->video.frame_type = tmp >> 4;
@@ -159,7 +158,7 @@ int parse_video(IOContext* ctx, FLV_Tag* tag)
 	return 0;
 }
 
-int parse_audio(IOContext* ctx, FLV_Tag* tag)
+static int parse_audio(IOContext* ctx, FLV_Tag* tag)
 {
 	uint8_t tmp = get_uint8(ctx);
 	tag->audio.format = tmp >> 4;
@@ -181,7 +180,7 @@ int parse_audio(IOContext* ctx, FLV_Tag* tag)
 	return 0;
 }
 
-int parse_tag_body(IOContext* ctx, FLV_Tag* tag)
+static int parse_tag_body(IOContext* ctx, FLV_Tag* tag)
 {
 	int ret = read(ctx, tag->data_size);
 	if(ret < tag->data_size)
@@ -231,7 +230,7 @@ int parse_flv(IOContext* ctx){
 	return 0;
 }
 
-void show_tag_info(FLV_Tag* tag)
+static void show_tag_info(FLV_Tag* tag)
 {
 	printf("type = %d, size = %d ", tag->type, tag->data_size);
 	if(tag->type == TAG_TYPE_VIDEO){
