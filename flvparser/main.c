@@ -113,7 +113,7 @@ int parse_metadata(IOContext* ctx, FLV_Tag* tag)
 	return 0;
 }
 
-int parse_h264_nalu(IOContext* ctx, FLV_Tag* tag)
+int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 {
 	int left_size = tag->data_size - 5;
 	while(left_size > 0){
@@ -123,17 +123,17 @@ int parse_h264_nalu(IOContext* ctx, FLV_Tag* tag)
 		left_size -= 4;
 		if(len > left_size)
 			break;
-		int nalu_type = get_uint8(ctx) & 0x1f;
+		int nalu_type = get_uint8(ctx);
+		if(tag->video.codec_id == CODEC_H264){
+			nalu_type = nalu_type & 0x1f;
+		}else if(tag->video.codec_id == CODEC_H265){
+			int nalu_type = (nalu_type & 0x7e) >> 1;
+		}
 		tag->video.nalu_list[tag->video.nalu_num++] = nalu_type;
 		get_skip(ctx, len-1);
 		left_size -= len;
 		
 	}
-	return 0;
-}
-
-int parse_h265_nalu(IOContext* ctx, FLV_Tag* tag)
-{
 	return 0;
 }
 
@@ -153,11 +153,7 @@ int parse_video(IOContext* ctx, FLV_Tag* tag)
 		int ret_size = get_data(ctx, tag->video.seq_header, size);
 		tag->video.seq_header_len = ret_size;
 	} else if(tag->video.avcpacket_type == NALU){
-		if(tag->video.codec_id == CODEC_H264){
-			parse_h264_nalu(ctx, tag);
-		} else if(tag->video.codec_id == CODEC_H265){
-			parse_h265_nalu(ctx, tag);
-		}
+		parse_h2645_nalu(ctx, tag);
 	}
 	return 0;
 }
@@ -249,7 +245,7 @@ void show_tag_info(FLV_Tag* tag)
 		if(tag->video.nalu_num > 0){
 			printf("nalu list: ");
 			for(int i=0;i<tag->video.nalu_num;i++){
-				printf("%02x ", tag->video.nalu_list[i]);
+				printf("%d ", tag->video.nalu_list[i]);
 			}
 		}
 	} else if(tag->type == TAG_TYPE_METADATA){
