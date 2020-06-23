@@ -60,7 +60,7 @@ static int prase_tag_header(IOContext* ctx, FLV_Tag* tag)
 	if(ret < 11)
 		return -1;
 
-	tag->type = get_uint8(ctx);
+	tag->type = get_uint8(ctx) & 0x1f;
 	tag->data_size = get_uint24(ctx);
 	tag->timestamp = get_flv_timestamp(ctx);
 	tag->stream_id = get_uint24(ctx);
