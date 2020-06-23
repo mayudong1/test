@@ -140,7 +140,7 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 		int nalu_type = get_uint8(ctx);
 		if(tag->video.codec_id == CODEC_H264){
 			nalu_type = nalu_type & 0x1f;
-			if(need_record(tag->video.codec_id, nalu_type)){
+			if(need_record(tag->video.codec_id, nalu_type) && tag->video.encode_param_num < MAX_ENCODE_PARAM_COUNT){
 				ENCODE_PARAM_INFO* param = &tag->video.encode_param[tag->video.encode_param_num++];
 				int nalu_len = len-1;
 				if(nalu_len > MAX_ENCODE_PARAM_LEN)
@@ -160,7 +160,7 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 			}
 		}else if(tag->video.codec_id == CODEC_HEVC){
 			nalu_type = ((nalu_type & 0x7e) >> 1);
-			if(need_record(tag->video.codec_id, nalu_type)){
+			if(need_record(tag->video.codec_id, nalu_type) && tag->video.encode_param_num < MAX_ENCODE_PARAM_COUNT){
 				get_skip(ctx, 1);
 				ENCODE_PARAM_INFO* param = &tag->video.encode_param[tag->video.encode_param_num++];
 				int nalu_len = len-2;
