@@ -126,8 +126,8 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 		int nalu_type = get_uint8(ctx);
 		if(tag->video.codec_id == CODEC_H264){
 			nalu_type = nalu_type & 0x1f;
-		}else if(tag->video.codec_id == CODEC_H265){
-			int nalu_type = (nalu_type & 0x7e) >> 1;
+		}else if(tag->video.codec_id == CODEC_HEVC){
+			nalu_type = ((nalu_type & 0x7e) >> 1);
 		}
 		tag->video.nalu_list[tag->video.nalu_num++] = nalu_type;
 		get_skip(ctx, len-1);
@@ -230,34 +230,136 @@ int parse_flv(IOContext* ctx){
 	return 0;
 }
 
-static void show_tag_info(FLV_Tag* tag)
+static void show_metadata(FLV_Tag* tag)
 {
-	printf("type = %d, size = %d ", tag->type, tag->data_size);
-	if(tag->type == TAG_TYPE_VIDEO){
-		printf("frame_type = %d(%x) ", tag->video.frame_type, tag->video.frame_type);
-		if(tag->video.seq_header_len > 0){
-			printf("sequence header: ");
-			for(int i=0;i<tag->video.seq_header_len;i++){
-				printf("%02x ", tag->video.seq_header[i]);
-			}
+	printf("Metadata Packet, size = %d, metadata count = %d\n", tag->data_size, tag->metadata.amf1_num);
+	for(int i=0;i<tag->metadata.amf1_num;i++){
+		METADATA_INFO* meta = &tag->metadata.meta_array[i];
+		printf("\t%s : ", meta->key);
+		if(meta->valueType == AMF_NUMBER){
+			printf("%f\n", meta->dValue);
+		} else if(meta->valueType == AMF_BOOLEAN){
+			printf("%d\n", meta->bValue);
+		} else if(meta->valueType == AMF_STRING){
+			printf("%s\n", meta->strValue);
 		}
-		if(tag->video.nalu_num > 0){
-			printf("nalu list: ");
-			for(int i=0;i<tag->video.nalu_num;i++){
-				printf("%d ", tag->video.nalu_list[i]);
-			}
+	}
+}
+
+static char* H264_NALU_NAME[] = {
+	"Unkown", 	//0
+	"P/B",		//1
+	"P/B",		//2
+	"P/B",		//3
+	"P/B",		//4
+	"IDR",		//5
+	"SEI",		//6
+	"SPS",		//7
+	"PPS",		//8
+	"AUD",		//9
+	"EOS",		//10
+	"EOB",		//11
+};
+
+static char* HEVC_NALU_NAME[] = {
+	"TRAIL_N", //0
+	"TRAIL_R", //1
+	"TSA_N", //2
+	"TSA_R", //3
+	"STSA_N", //4
+	"STSA_R", //5
+	"RADL_N", //6
+	"RADL_R", //7
+	"RASL_N", //8
+	"RASL_R", //9
+	"RSV_VCL_N10", //10
+	"RSV_VCL_R11", //11
+	"RSV_VCL_N12", //12
+	"RSV_VCL_R13", //13
+	"RSV_VCL_N14", //14
+	"RSV_VCL_R15", //15
+	"BLA_W_LP", //16
+	"BLA_W_RADL", //17
+	"BLA_N_LP", //18
+	"IDR_W_RADL", //19
+	"IDR_N_LP", //20
+	"CRA_NUT", //21
+	"RSV_IRAP_VCL22", //22
+	"RSV_IRAP_VCL23", //23
+	"RSV_VCL24", //24
+	"RSV_VCL25", //25
+	"RSV_VCL26", //26
+	"RSV_VCL27", //27
+	"RSV_VCL28", //28
+	"RSV_VCL29", //29
+	"RSV_VCL30", //30
+	"RSV_VCL31", //31
+	"VPS_NUT", //32
+	"SPS_NUT", //33
+	"PPS_NUT", //34
+	"AUD_NUT", //35
+	"EOS_NUT", //36
+	"EOB_NUT", //37
+	"FD_NUT", //38
+	"PREFIX_SEI_NUT", //39
+	"SUFFIX_SEI_NUT", //40
+};
+
+static char* get_nalu_name(int codec_id, int nalu_type){
+	if(codec_id == CODEC_H264){
+		if(nalu_type > sizeof(H264_NALU_NAME) / sizeof(H264_NALU_NAME[0]))
+			return "Unkown";
+		else
+			return H264_NALU_NAME[nalu_type];
+	} else if(codec_id == CODEC_HEVC){
+		if(nalu_type > sizeof(HEVC_NALU_NAME) / sizeof(HEVC_NALU_NAME[0]))
+			return "Unkown";
+		else
+			return HEVC_NALU_NAME[nalu_type];
+	}
+	return "Unkown";
+}
+
+static void show_video(FLV_Tag* tag)
+{
+	static int count = 0;
+	printf("Video Packet %d, size=%d, ", count++, tag->data_size);
+	printf("stream_id=%d, ", tag->stream_id);
+	if(tag->video.codec_id == CODEC_H264){
+		printf("codec=H264, ");
+	} else if(tag->video.codec_id == CODEC_HEVC){
+		printf("codec=HEVC, ");
+	} else{
+		printf("codec=Unkown, ");
+	}
+	printf("key_frame=%d, ", (tag->video.frame_type == 1));
+	printf("dts=%d, pts=%d, ", tag->timestamp, tag->timestamp + tag->video.cts);
+
+	if(tag->video.avcpacket_type == SEQ_HEADER){
+		printf("sequence header=");
+		for(int i=0;i<tag->video.seq_header_len;i++){
+			printf("%02x", tag->video.seq_header[i]);
 		}
-	} else if(tag->type == TAG_TYPE_METADATA){
-		for(int i=0;i<tag->metadata.amf1_num;i++){
-			printf("%s ", tag->metadata.meta_array[i].key);
-		}
-	} else if(tag->type == TAG_TYPE_AUDIO){
-		if(tag->audio.seq_header_len > 0){
-			printf("audio adts : ");
-			for(int i=0;i<tag->audio.seq_header_len;i++){
-				printf("%02x ", tag->audio.seq_header[i]);
-			}
+	}else if(tag->video.avcpacket_type == SEQ_END){
+		printf("sequence end.");
+	}else if(tag->video.avcpacket_type == NALU){
+		printf("Nalu:");
+		for(int i=0;i<tag->video.nalu_num;i++){
+			printf("%s(%d) ", get_nalu_name(tag->video.codec_id, tag->video.nalu_list[i]), tag->video.nalu_list[i]);
 		}
 	}
 	printf("\n");
+}
+
+static void show_tag_info(FLV_Tag* tag)
+{
+	static int video_count = 0;
+	static int audio_count = 0;
+	if(tag->type == TAG_TYPE_VIDEO){
+		show_video(tag);
+	} else if(tag->type == TAG_TYPE_AUDIO){
+		
+	} else if(tag->type == TAG_TYPE_METADATA){
+		show_metadata(tag);
+	}
 }

@@ -16,7 +16,7 @@
 
 enum VIDEO_CODEC{
 	CODEC_H264 = 7,
-	CODEC_H265 = 12,
+	CODEC_HEVC = 12,
 };
 
 enum PACKET_TYPE{
