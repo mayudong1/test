@@ -257,7 +257,7 @@ static char* H264_NALU_NAME[] = {
 	"P/B",		//2
 	"P/B",		//3
 	"P/B",		//4
-	"IDR",		//5
+	"I",		//5
 	"SEI",		//6
 	"SPS",		//7
 	"PPS",		//8
