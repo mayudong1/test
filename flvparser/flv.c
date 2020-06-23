@@ -113,20 +113,6 @@ static int parse_metadata(IOContext* ctx, FLV_Tag* tag)
 	return 0;
 }
 
-static bool need_record(int codec_id, int nalu_type){
-	if(codec_id == CODEC_H264){
-		if(nalu_type == H264_NALU_SEI || nalu_type == H264_NALU_SPS || nalu_type == H264_NALU_PPS)
-			return true;
-	}else{
-		if(nalu_type == HEVC_NALU_VPS 
-			|| nalu_type == HEVC_NALU_SPS
-			|| nalu_type == HEVC_NALU_PPS
-			|| nalu_type == HEVC_NALU_PREFIX_SEI
-			|| nalu_type == HEVC_NALU_SUFFIX_SEI)
-			return true;
-	}
-	return false;
-}
 static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 {
 	int left_size = tag->data_size - 5;
@@ -140,7 +126,7 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 		int nalu_type = get_uint8(ctx);
 		if(tag->video.codec_id == CODEC_H264){
 			nalu_type = nalu_type & 0x1f;
-			if(need_record(tag->video.codec_id, nalu_type) && tag->video.encode_param_num < MAX_ENCODE_PARAM_COUNT){
+			if(tag->video.encode_param_num < MAX_ENCODE_PARAM_COUNT){
 				ENCODE_PARAM_INFO* param = &tag->video.encode_param[tag->video.encode_param_num++];
 				int nalu_len = len-1;
 				if(nalu_len > MAX_ENCODE_PARAM_LEN)
@@ -151,6 +137,12 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 					strcpy(param->name, "SPS");
 				} else if(nalu_type == H264_NALU_PPS){
 					strcpy(param->name, "PPS");
+				} else if(nalu_type == H264_NALU_KWAI){
+					strcpy(param->name, "KWAI");
+				} else{
+					if(nalu_len > 16)
+						nalu_len = 16; //普通nal，只显示开头部分字节
+					sprintf(param->name, "NALU(%d)", nalu_type);
 				}
 				param->data_len = nalu_len;
 				int ret = get_data(ctx, param->data, param->data_len);
@@ -160,7 +152,7 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 			}
 		}else if(tag->video.codec_id == CODEC_HEVC){
 			nalu_type = ((nalu_type & 0x7e) >> 1);
-			if(need_record(tag->video.codec_id, nalu_type) && tag->video.encode_param_num < MAX_ENCODE_PARAM_COUNT){
+			if(tag->video.encode_param_num < MAX_ENCODE_PARAM_COUNT){
 				get_skip(ctx, 1);
 				ENCODE_PARAM_INFO* param = &tag->video.encode_param[tag->video.encode_param_num++];
 				int nalu_len = len-2;
@@ -176,6 +168,12 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 					strcpy(param->name, "PREFIX_SEI");
 				} else if(nalu_type == HEVC_NALU_SUFFIX_SEI){
 					strcpy(param->name, "SUFFIX_SEI");
+				} else if(nalu_type == HEVC_NALU_KWAI){
+					strcpy(param->name, "KWAI");
+				} else{
+					if(nalu_len > 16)
+						nalu_len = 16; //普通nal，只显示开头部分字节
+					sprintf(param->name, "NALU(%d)", nalu_type);
 				}
 				param->data_len = nalu_len;
 				int ret = get_data(ctx, param->data, param->data_len);
