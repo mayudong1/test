@@ -142,19 +142,24 @@ static int parse_video(IOContext* ctx, FLV_Tag* tag)
 	uint8_t tmp = get_uint8(ctx);
 	tag->video.frame_type = tmp >> 4;
 	tag->video.codec_id = tmp & 0x0f;
-	tag->video.avcpacket_type = get_uint8(ctx);
-	tag->video.cts = get_uint24(ctx);
+	if(tag->video.codec_id == CODEC_H264 || tag->video.codec_id == CODEC_HEVC){
+		tag->video.avcpacket_type = get_uint8(ctx);
+		tag->video.cts = get_uint24(ctx);	
 
-	if(tag->video.avcpacket_type == SEQ_HEADER){
+		if(tag->video.avcpacket_type == SEQ_HEADER){
 		int size = tag->data_size - 5;
 		if(size > MAX_SEQ_HEADER_LEN){
 			size = MAX_SEQ_HEADER_LEN;
 		}
+
 		int ret_size = get_data(ctx, tag->video.seq_header, size);
-		tag->video.seq_header_len = ret_size;
-	} else if(tag->video.avcpacket_type == NALU){
-		parse_h2645_nalu(ctx, tag);
+			tag->video.seq_header_len = ret_size;
+		} else if(tag->video.avcpacket_type == NALU){
+			parse_h2645_nalu(ctx, tag);
+		}
 	}
+
+	
 	return 0;
 }
 
@@ -320,34 +325,53 @@ static char* get_nalu_name(int codec_id, int nalu_type){
 	return "Unkown";
 }
 
+static char* get_video_codec(int id)
+{
+	switch(id){
+	case 2:
+		return "Sorenson H.263";
+	case 3:
+		return "Screen video";
+	case 4:
+		return "On2 VP6";
+	case 5:
+		return "VP6";
+	case 6:
+		return "Screen video version 2";
+	case 7:
+		return "H264";
+	case 12:
+		return "HEVC";
+	default:
+		return "Unkown";
+	}
+}
+
 static void show_video(FLV_Tag* tag)
 {
 	static int count = 0;
 	printf("Video Packet %d, size=%d, ", count++, tag->data_size);
 	printf("stream_id=%d, ", tag->stream_id);
-	if(tag->video.codec_id == CODEC_H264){
-		printf("codec=H264, ");
-	} else if(tag->video.codec_id == CODEC_HEVC){
-		printf("codec=HEVC, ");
-	} else{
-		printf("codec=Unkown, ");
-	}
+	printf("codec=%s, ", get_video_codec(tag->video.codec_id));
 	printf("key_frame=%d, ", (tag->video.frame_type == 1));
 	printf("dts=%d, pts=%d, ", tag->timestamp, tag->timestamp + tag->video.cts);
 
-	if(tag->video.avcpacket_type == SEQ_HEADER){
-		printf("sequence header=");
-		for(int i=0;i<tag->video.seq_header_len;i++){
-			printf("%02x", tag->video.seq_header[i]);
-		}
-	}else if(tag->video.avcpacket_type == SEQ_END){
-		printf("sequence end.");
-	}else if(tag->video.avcpacket_type == NALU){
-		printf("Nalu:");
-		for(int i=0;i<tag->video.nalu_num;i++){
-			printf("%s(%d) ", get_nalu_name(tag->video.codec_id, tag->video.nalu_list[i]), tag->video.nalu_list[i]);
+	if(tag->video.codec_id == CODEC_H264 || tag->video.codec_id == CODEC_HEVC){
+		if(tag->video.avcpacket_type == SEQ_HEADER){
+			printf("sequence header=");
+			for(int i=0;i<tag->video.seq_header_len;i++){
+				printf("%02x", tag->video.seq_header[i]);
+			}
+		}else if(tag->video.avcpacket_type == SEQ_END){
+			printf("sequence end.");
+		}else if(tag->video.avcpacket_type == NALU){
+			printf("Nalu:");
+			for(int i=0;i<tag->video.nalu_num;i++){
+				printf("%s(%d) ", get_nalu_name(tag->video.codec_id, tag->video.nalu_list[i]), tag->video.nalu_list[i]);
+			}
 		}
 	}
+	
 	printf("\n");
 }
 
@@ -413,9 +437,9 @@ static char* get_audio_channel(int id)
 static void show_audio(FLV_Tag* tag)
 {
 	static int count = 0;
-	printf("Audio Packet %d, size = %d, ", count++, tag->data_size);
+	printf("Audio Packet %d, size=%d, ", count++, tag->data_size);
 	printf("stream_id=%d, ", tag->stream_id);
-	printf("codec = %s(%s %s %s), ", 
+	printf("codec=%s(%s %s %s), ", 
 		get_audio_codec(tag->audio.format), 
 		get_audio_sample_rate(tag->audio.sample_rate),
 		get_audio_bit_width(tag->audio.bit_width),
