@@ -351,15 +351,100 @@ static void show_video(FLV_Tag* tag)
 	printf("\n");
 }
 
+
+static char* AUDIO_FORMAT[] = {
+	"PCM", //0
+	"ADPCM", //1
+	"MP3", //2
+	"PCM", //3
+	"Nellymoser", //4
+	"Nellymoser", //5
+	"Nellymoser", //6
+	"PCM", //7
+	"PCM", //8
+	"", //9
+	"AAC", //10
+	"Speex", //11
+	"", //12
+	"", //13
+	"MP3", //14
+	"Device-specific", //15
+};
+
+static char* get_audio_codec(int id)
+{
+	if(id > sizeof(AUDIO_FORMAT)/sizeof(AUDIO_FORMAT[0]))
+		return "Unkown";
+	else
+		return AUDIO_FORMAT[id];
+}
+
+static char* get_audio_sample_rate(int id)
+{
+	switch(id){
+	case 0:
+		return "5.5kHz";
+	case 1:
+		return "11kHz";
+	case 2:
+		return "22kHz";
+	case 3:
+		return "44kHz";
+	default:
+		return "";
+	}
+}
+
+static char* get_audio_bit_width(int id)
+{
+	if(id == 0)
+		return "8bit";
+	else
+		return "16bit";
+}
+
+static char* get_audio_channel(int id)
+{
+	if(id == 0)
+		return "Mono";
+	else
+		return "Stereo";
+}
+static void show_audio(FLV_Tag* tag)
+{
+	static int count = 0;
+	printf("Audio Packet %d, size = %d, ", count++, tag->data_size);
+	printf("stream_id=%d, ", tag->stream_id);
+	printf("codec = %s(%s %s %s), ", 
+		get_audio_codec(tag->audio.format), 
+		get_audio_sample_rate(tag->audio.sample_rate),
+		get_audio_bit_width(tag->audio.bit_width),
+		get_audio_channel(tag->audio.stereo));
+	printf("dts=%d, ", tag->timestamp);
+	if(tag->audio.format == 10 && tag->audio.aac_packet_type == 0){
+		printf("sequence header=\"");
+		for(int i=0;i<tag->audio.seq_header_len;i++){
+			printf("%02x ", tag->audio.seq_header[i]);
+		}
+		printf("\b\"");
+	}
+	printf("\n");
+}
+
+static void show_unkown(FLV_Tag* tag)
+{
+
+}
+
 static void show_tag_info(FLV_Tag* tag)
 {
-	static int video_count = 0;
-	static int audio_count = 0;
 	if(tag->type == TAG_TYPE_VIDEO){
 		show_video(tag);
 	} else if(tag->type == TAG_TYPE_AUDIO){
-		
+		show_audio(tag);
 	} else if(tag->type == TAG_TYPE_METADATA){
 		show_metadata(tag);
+	} else{
+		show_unkown(tag);
 	}
 }
