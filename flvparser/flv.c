@@ -457,7 +457,9 @@ static void show_audio(FLV_Tag* tag)
 
 static void show_unkown(FLV_Tag* tag)
 {
-
+	printf("Unkown Packet, size = %d, ", tag->data_size);	
+	printf("stream_id=%d, ", tag->stream_id);
+	printf("\n");
 }
 
 static void show_tag_info(FLV_Tag* tag)
