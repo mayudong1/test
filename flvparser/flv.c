@@ -113,6 +113,20 @@ static int parse_metadata(IOContext* ctx, FLV_Tag* tag)
 	return 0;
 }
 
+static bool need_record(int codec_id, int nalu_type){
+	if(codec_id == CODEC_H264){
+		if(nalu_type == H264_NALU_SEI || nalu_type == H264_NALU_SPS || nalu_type == H264_NALU_PPS)
+			return true;
+	}else{
+		if(nalu_type == HEVC_NALU_VPS 
+			|| nalu_type == HEVC_NALU_SPS
+			|| nalu_type == HEVC_NALU_PPS
+			|| nalu_type == HEVC_NALU_PREFIX_SEI
+			|| nalu_type == HEVC_NALU_SUFFIX_SEI)
+			return true;
+	}
+	return false;
+}
 static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 {
 	int left_size = tag->data_size - 5;
@@ -126,11 +140,51 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 		int nalu_type = get_uint8(ctx);
 		if(tag->video.codec_id == CODEC_H264){
 			nalu_type = nalu_type & 0x1f;
+			if(need_record(tag->video.codec_id, nalu_type)){
+				ENCODE_PARAM_INFO* param = &tag->video.encode_param[tag->video.encode_param_num++];
+				int nalu_len = len-1;
+				if(nalu_len > MAX_ENCODE_PARAM_LEN)
+					nalu_len = MAX_ENCODE_PARAM_LEN;
+				if(nalu_type == H264_NALU_SEI){
+					strcpy(param->name, "SEI");
+				} else if(nalu_type == H264_NALU_SPS){
+					strcpy(param->name, "SPS");
+				} else if(nalu_type == H264_NALU_PPS){
+					strcpy(param->name, "PPS");
+				}
+				param->data_len = nalu_len;
+				int ret = get_data(ctx, param->data, param->data_len);
+				get_skip(ctx, len-1-ret);
+			}else{
+				get_skip(ctx, len-1);
+			}
 		}else if(tag->video.codec_id == CODEC_HEVC){
 			nalu_type = ((nalu_type & 0x7e) >> 1);
+			if(need_record(tag->video.codec_id, nalu_type)){
+				get_skip(ctx, 1);
+				ENCODE_PARAM_INFO* param = &tag->video.encode_param[tag->video.encode_param_num++];
+				int nalu_len = len-2;
+				if(nalu_len > MAX_ENCODE_PARAM_LEN)
+					nalu_len = MAX_ENCODE_PARAM_LEN;
+				if(nalu_type == HEVC_NALU_VPS){
+					strcpy(param->name, "VPS");
+				} else if(nalu_type == HEVC_NALU_SPS){
+					strcpy(param->name, "SPS");
+				} else if(nalu_type == HEVC_NALU_PPS){
+					strcpy(param->name, "PPS");
+				} else if(nalu_type == HEVC_NALU_PREFIX_SEI){
+					strcpy(param->name, "PREFIX_SEI");
+				} else if(nalu_type == HEVC_NALU_SUFFIX_SEI){
+					strcpy(param->name, "SUFFIX_SEI");
+				}
+				param->data_len = nalu_len;
+				int ret = get_data(ctx, param->data, param->data_len);
+				get_skip(ctx, len-2-ret);
+			}else{
+				get_skip(ctx, len-1);	
+			}
 		}
 		tag->video.nalu_list[tag->video.nalu_num++] = nalu_type;
-		get_skip(ctx, len-1);
 		left_size -= len;
 		
 	}
@@ -371,8 +425,14 @@ static void show_video(FLV_Tag* tag)
 			}
 		}
 	}
-	
 	printf("\n");
+	for(int i=0;i<tag->video.encode_param_num;i++){
+		printf("%s:", tag->video.encode_param[i].name);
+		for(int j=0;j<tag->video.encode_param[i].data_len;j++){
+			printf("%02x ", tag->video.encode_param[i].data[j]);
+		}
+		printf("\n");
+	}
 }
 
 

@@ -13,6 +13,22 @@
 #define TAG_TYPE_VIDEO 0x09
 #define TAG_TYPE_AUDIO 0x08
 
+enum H264_NALU_TYPE{
+	H264_NALU_IDR = 5,
+	H264_NALU_SEI = 6,
+	H264_NALU_SPS = 7,
+	H264_NALU_PPS = 8,
+};
+
+enum HEVC_NALU_TYPE{
+	HEVC_NALU_VPS = 32,
+	HEVC_NALU_SPS = 33,
+	HEVC_NALU_PPS = 34,
+
+	HEVC_NALU_PREFIX_SEI = 39,
+	HEVC_NALU_SUFFIX_SEI = 40,
+};
+
 
 enum VIDEO_CODEC{
 	CODEC_H264 = 7,
@@ -42,6 +58,15 @@ typedef struct TAG_METADATA{
 	METADATA_INFO meta_array[MAX_METADATA_COUNT];
 }TAG_METADATA;
 
+#define MAX_ENCODE_PARAM_LEN 1024
+#define MAX_ENCODE_PARAM_COUNT 10
+
+typedef struct ENCODE_PARAM_INFO{
+	char name[20];
+	int data_len;
+	uint8_t data[MAX_ENCODE_PARAM_LEN];
+}ENCODE_PARAM_INFO;
+
 typedef struct TAG_VIDEO{
 	int frame_type;
 	int codec_id;
@@ -52,6 +77,9 @@ typedef struct TAG_VIDEO{
 
 	int nalu_num;
 	int nalu_list[MAX_NALU_NUM];
+
+	int encode_param_num;
+	ENCODE_PARAM_INFO encode_param[MAX_ENCODE_PARAM_COUNT];
 }TAG_VIDEO;
 
 typedef struct TAG_AUDIO{
