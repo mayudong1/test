@@ -126,8 +126,19 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 		uint32_t len = get_uint32(ctx);
 		left_size -= 4;
 		if(len == 1){
-			printf("NALU is annex B format, not support\n");
-			break;
+			uint8_t* p = NULL;
+			int tmp_nalu_len = 0;
+			int tmp_len = peak_data(ctx, &p);
+			for(int i=0;i<tmp_len;i++){
+				if(p[0] == 0 && p[1] == 0 && p[2] == 1){
+					break;
+				}
+				tmp_nalu_len++;
+				p++;
+			}
+			len = tmp_nalu_len;
+			// printf("NALU is annex B format, not support\n");
+			// break;
 		}
 		
 		if(len > left_size)
