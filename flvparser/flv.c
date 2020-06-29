@@ -137,7 +137,7 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 				p++;
 			}
 			len = tmp_nalu_len;
-			// printf("NALU is annex B format, not support\n");
+			printf("NALU is annex B format, this may be incorrect\n");
 			// break;
 		}
 		
