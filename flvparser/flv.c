@@ -130,7 +130,7 @@ static int parse_h2645_nalu(IOContext* ctx, FLV_Tag* tag)
 			int tmp_nalu_len = 0;
 			int tmp_len = peak_data(ctx, &p);
 			for(int i=0;i<tmp_len;i++){
-				if(p[0] == 0 && p[1] == 0 && p[2] == 1){
+				if(p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 1){
 					break;
 				}
 				tmp_nalu_len++;
