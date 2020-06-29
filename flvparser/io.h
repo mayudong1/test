@@ -25,7 +25,7 @@ uint32_t get_uint32(IOContext* ctx);
 void get_skip(IOContext* ctx, int skip);
 
 int get_data(IOContext* ctx, uint8_t* data, int size);
-int peak_data(IOContext* ctx, uint8_t** data);
+int peek_data(IOContext* ctx, uint8_t** data);
 
 
 #endif

@@ -91,7 +91,7 @@ int get_data(IOContext* ctx, uint8_t* data, int size){
 	return size;
 }
 
-int peak_data(IOContext* ctx, uint8_t** data){
+int peek_data(IOContext* ctx, uint8_t** data){
 	*data = &ctx->buffer[ctx->cur_index];
 	return ctx->size - ctx->cur_index;
 }
