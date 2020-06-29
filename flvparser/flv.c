@@ -24,10 +24,14 @@ static uint32_t get_flv_timestamp(IOContext* ctx){
 static void get_amf_string(IOContext*ctx, char* str)
 {
 	int len = get_uint16(ctx);
+	int unread_len = 0;
 	if(len > MAX_AMF_STR_LEN - 1){
+		unread_len = len - MAX_AMF_STR_LEN + 1;
 		len = MAX_AMF_STR_LEN - 1;
 	}
 	int ret = get_data(ctx, (uint8_t*)str, len);
+	if(unread_len > 0)
+		get_skip(ctx, unread_len);
 	str[ret] = 0;
 }
 
