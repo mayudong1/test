@@ -5,6 +5,7 @@
 
 #include "io.h"
 #include "flv.h"
+#include "ts.h"
 
 int main(int argc, char** argv)
 {
@@ -21,6 +22,8 @@ int main(int argc, char** argv)
 	}
 
 	parse_flv(ctx);
+	// parse_ts(ctx);
+
 
 	close_input(ctx);
 

@@ -6,6 +6,7 @@
 #include "io.h"
 #include "flv.h"
 #include "amf.h"
+#include "sps.h"
 
 
 static void show_tag_info(FLV_Tag* tag);
@@ -219,13 +220,47 @@ static int parse_video(IOContext* ctx, FLV_Tag* tag)
 		tag->video.cts = get_uint24(ctx);	
 
 		if(tag->video.avcpacket_type == SEQ_HEADER){
-		int size = tag->data_size - 5;
-		if(size > MAX_SEQ_HEADER_LEN){
-			size = MAX_SEQ_HEADER_LEN;
-		}
+			int size = tag->data_size - 5;
+			if(size > MAX_SEQ_HEADER_LEN){
+				size = MAX_SEQ_HEADER_LEN;
+			}
 
-		int ret_size = get_data(ctx, tag->video.seq_header, size);
+			int ret_size = get_data(ctx, tag->video.seq_header, size);
 			tag->video.seq_header_len = ret_size;
+			if(tag->video.codec_id == CODEC_H264){
+				int sps_count = tag->video.seq_header[5] & 0x1f;
+				if(sps_count >= 1){
+					uint8_t* p = &tag->video.seq_header[6];
+					int len = (p[0] << 8 | p[1]) - 1;
+					uint8_t* sps_data = p + 3;
+					int width = 0;
+					int height = 0;
+					get_resolution_from_sps(sps_data, len, &width, &height);
+					printf("width = %d, height = %d\n", width, height);
+				}	
+			}else if(tag->video.codec_id == CODEC_HEVC){
+				int numberOfArray = tag->video.seq_header[22];
+        		uint8_t* pData = &tag->video.seq_header[23];
+        		for(int i=0;i<numberOfArray;i++){
+        			int nalu_type = pData[0] & 0x3f;
+        			printf("nalu_type = %d\n", nalu_type);
+        			int count = pData[1] << 8 | pData[2];
+        			pData += 3;
+        			for(int j=0;j<count;j++){
+        				int nalu_len = pData[0] << 8 | pData[1];
+        				pData += 2;
+        				printf("nalu_len = %d, %02x %02x\n", nalu_len, pData[0], pData[1]);
+        				if(nalu_type == HEVC_NALU_SPS){
+        					int width = 0;
+        					int height = 0;
+        					get_resolution_from_h265_sps(pData+2, nalu_len-2, &width, &height);
+        					printf("width = %d, height = %d\n", width, height);
+        				}
+        				pData += nalu_len;
+        			}
+        		}
+			}
+			
 		} else if(tag->video.avcpacket_type == NALU){
 			parse_h2645_nalu(ctx, tag);
 		}
